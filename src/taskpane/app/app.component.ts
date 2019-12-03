@@ -1,8 +1,7 @@
 import { Component } from "@angular/core";
+import { async } from "q";
 const template = require("./app.component.html");
 /* global console, Excel, require */
-import * as moment from 'moment-msdate';
-import { ContextReplacementPlugin } from "webpack";
 
 @Component({
   selector: "app-home",
@@ -10,7 +9,7 @@ import { ContextReplacementPlugin } from "webpack";
 })
 export default class AppComponent {
   welcomeMessage = "Welcome";
-  isFilterApplied
+  sorted = false;
 
   async run() {
     try {
@@ -103,6 +102,82 @@ export default class AppComponent {
         // const AmountFilter = expenseTable.columns.getItem("Category").filter;
         // AmountFilter.clear();
         expenseTable.clearFilters();
+
+        return context.sync();
+      });
+    } catch (error) {
+      console.log(error);
+    }
+  }
+
+  async sortTable() {
+    try {  
+      await Excel.run(async context => {
+        const currentWorkSheet = context.workbook.worksheets.getActiveWorksheet();
+        const expenseTable = currentWorkSheet.tables.getItem("ExpensesTable");
+
+        const sortingType = !this.sorted;
+  
+        const sortingFields = [
+          {
+            key: 1,
+            ascending: sortingType
+          }
+        ];
+
+        this.sorted = sortingType;
+
+        expenseTable.sort.apply(sortingFields);
+        return context.sync();
+      });
+    } catch (error) {
+      console.log(error);
+    }
+  }
+
+  async createChart() {
+    console.log("createChart");
+    try {
+      await Excel.run(async context => {
+        const currentWorksheet = context.workbook.worksheets.getActiveWorksheet();
+        const expensesTable = currentWorksheet.tables.getItem('ExpensesTable');
+        const dataRange = expensesTable.getDataBodyRange();
+
+        const chart = currentWorksheet.charts.add('ColumnClustered', dataRange);
+        
+        chart.setPosition("A11", "F30");
+        chart.title.text = "Expenses";
+        chart.legend.position = "Right"
+        chart.legend.format.fill.setSolidColor("white");
+        chart.dataLabels.format.font.size = 12;
+        chart.dataLabels.format.font.color = "black";
+        chart.series.getItemAt(0).name = 'Value in €';
+
+        return context.sync();
+      });
+    } catch (error) {
+      console.log(error);
+    }
+  }
+
+  async freezeHeader() {
+    try {
+      await Excel.run(async context => {
+        const currentWorksheet = context.workbook.worksheets.getActiveWorksheet();
+        currentWorksheet.freezePanes.freezeRows(1);
+
+        return context.sync();
+      });
+    } catch (error) {
+      console.log(error);
+    }
+  }
+
+  async cancelFreezeHeader() {
+    try {
+      await Excel.run(async context => {
+        const currentWorksheet = context.workbook.worksheets.getActiveWorksheet();
+        currentWorksheet.freezePanes.unfreeze();
 
         return context.sync();
       });
